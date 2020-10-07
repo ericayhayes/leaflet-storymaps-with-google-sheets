@@ -26,22 +26,22 @@ $(window).on('load', function() {
     var parse = function(res) {
       return Papa.parse(Papa.unparse(res[0].values), {header: true} ).data;
     }
-
+  
     // First, try reading data from the Google Sheet
     if (typeof googleDocURL !== 'undefined' && googleDocURL) {
-
+  
       if (typeof googleApiKey !== 'undefined' && googleApiKey) {
-
+  
         var apiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/'
         var spreadsheetId = googleDocURL.split('/d/')[1].split('/')[0];
-
+  
         $.when(
           $.getJSON(apiUrl + spreadsheetId + '/values/Options?key=' + googleApiKey),
           $.getJSON(apiUrl + spreadsheetId + '/values/Chapters?key=' + googleApiKey),
         ).then(function(options, chapters) {
           initMap(parse(options), parse(chapters))
         })
-
+  
       } else {
         alert('You load data from a Google Sheet, you need to add a free Google API key')
       }
@@ -49,7 +49,7 @@ $(window).on('load', function() {
     } else {
       alert('You need to specify a valid Google Sheet (googleDocURL)')
     }
-
+  
   })
 
 
@@ -101,18 +101,16 @@ $(window).on('load', function() {
     var chapterContainerMargin = 70;
 
     document.title = getSetting('_mapTitle');
-    $('#header').append('<h1>' + getSetting('_mapTitle') + '</h1>');
-    $('#header').append('<h2>' + getSetting('_mapSubtitle') + '</h2>');
-
+    $('#header').append('<h1>' + (getSetting('_mapTitle') || '') + '</h1>');
+    $('#header').append('<h2>' + (getSetting('_mapSubtitle') || '') + '</h2>');
 
     // Add logo
     if (getSetting('_mapLogo')) {
-      $('#header').append('<a href="https://kensingtonremembers.org/"><img class="logo" src="' + getSetting('_mapLogo') + '" /></a>')
-      //$('#logo').append('<img src="' + getSetting('_mapLogo') + '" />');
-      $('#top').css('height', '80px');
+      $('#logo').append('<img src="' + getSetting('_mapLogo') + '" />');
+      $('#top').css('height', '60px');
     } else {
-      $('.logo').css('display', 'none');
-      //$('#header').css('padding-top', '25px');
+      $('#logo').css('display', 'none');
+      $('#header').css('padding-top', '25px');
     }
 
     // Load tiles
@@ -185,22 +183,22 @@ $(window).on('load', function() {
       var mediaContainer = null;
 
       // Add media source
-      var mediasource = $('<a>', {
-        text: c['Media Credit'],
-        href: c['Media Credit Link'],
-        target: "_blank",
-        class: 'source'
-      });
+      var source = '';
+      if (c['Media Credit Link']) {
+        source = $('<a>', {
+          text: c['Media Credit'],
+          href: c['Media Credit Link'],
+          target: "_blank",
+          class: 'source'
+        });
+      } else {
+        source = $('<span>', {
+          text: c['Media Credit'],
+          class: 'source'
+        });
+      }
 
-      var mediasourcemodal = $('<a>', {
-        text: c['Media Credit'],
-        href: c['Media Credit Link'],
-        target: "_blank",
-        class: 'modal_caption'
-      });
-
-
-          // YouTube
+      // YouTube
       if (c['Media Link'] && c['Media Link'].indexOf('youtube.com/') > -1) {
         media = $('<iframe></iframe>', {
           src: c['Media Link'],
@@ -213,7 +211,7 @@ $(window).on('load', function() {
 
         mediaContainer = $('<div></div', {
           class: 'img-container'
-        }).append(media).after(mediasource);
+        }).append(media).after(source);
       }
 
       // If not YouTube: either audio or image
@@ -222,90 +220,33 @@ $(window).on('load', function() {
         'jpeg': 'img',
         'png': 'img',
         'mp3': 'audio',
-        'mp4': 'audio',
         'ogg': 'audio',
         'wav': 'audio',
       }
 
-      var mediaExt = c['Media Link'].split('.').pop().toLowerCase();
+      var mediaExt = c['Media Link'] ? c['Media Link'].split('.').pop().toLowerCase() : '';
       var mediaType = mediaTypes[mediaExt];
 
       if (mediaType) {
-       media = $('<' + mediaType + '>', {
-         src: c['Media Link'],
-         class: 'myImg',
-         alt: c['Media Credit'],
-         controls: mediaType == 'audio' ? 'controls' : '',
-       });
+        media = $('<' + mediaType + '>', {
+          src: c['Media Link'],
+          controls: mediaType == 'audio' ? 'controls' : '',
+        });
 
-       mediaContainer = $('<div></div', {
-         class: mediaType + '-container'
-       }).append(media).after(mediasource);
-
-    }
+        mediaContainer = $('<div></div', {
+          class: mediaType + '-container'
+        }).append(media).after(source);
+      }
 
       container
         .append('<p class="chapter-header">' + c['Chapter'] + '</p>')
         .append(media ? mediaContainer : '')
-        .append(media ? mediasource : '')
+        .append(media ? source : '')
         .append('<p class="description">' + c['Description'] + '</p>');
 
       $('#contents').append(container);
 
-      var modalcontainer = $('<div></div>', {
-          id: 'modalcontainer' + i,
-        });
-
-        span = $('<span class="close">'+ c['Span Element'] + '</span>');
-
-        modal = $('<' + mediaType + '>', {
-              src: c['Media Link'],
-              id: 'img01',
-              class: 'modal-content',
-              controls: mediaType == 'audio' ? 'controls' : '',
-              });
-
-        imgContainer = $('<div id="myModal" class="modal"></div',{
-            class: mediaType
-          }).append(span)
-          .append(modal)
-          .append(mediasourcemodal)
-          ;
-        $('#contents').append(imgContainer);
-
-        modalcontainer
-              .append(media ? imgContainer : '')
-            $('#contents').append(modalcontainer);
-
-        var modal = document.getElementById('myModal');
-        var span = document.getElementsByClassName("close")[0];
-
-        // Get the image and insert it inside the modal - use its "alt" text as a caption
-
-        var img = $('.myImg');
-        var modalImg = $("#img01");
-        var captionText = document.getElementById("caption");
-        $('.myImg').click(function(){
-            if ($(window).width() >=768 ) {
-                modal.style.display = "block";
-                var newSrc = this.src;
-                var newCaption = $( this ).parent().next().text();
-                var newCaptionLink = $( this ).parent().next().attr('href');
-                $("#title").css('visibility','hidden');
-                modalImg.attr('src', newSrc);
-                modalImg.next().text(newCaption);
-                modalImg.next().attr('href',newCaptionLink);
-            }
-        });
-        // When the user clicks on <span> (x), close the modal
-        span.onclick = function() {
-          modal.style.display = "none";
-          $("#title").css('visibility','visible');
-        };
-
-
-
-      }
+    }
 
     changeAttribution();
 
@@ -334,7 +275,7 @@ $(window).on('load', function() {
       }
 
       for (var i = 0; i < pixelsAbove.length - 1; i++) {
-
+        
         if ( currentPosition >= pixelsAbove[i]
           && currentPosition < (pixelsAbove[i+1] - 2 * chapterContainerMargin)
           && currentlyInFocus != i
@@ -433,10 +374,6 @@ $(window).on('load', function() {
           <i class='fa fa-chevron-up'></i></br> \
           <small>Top</small>  \
         </a> \
-        <br/> \
-        <a href='https://kensingtonremembers.org/'>  \
-          <small>Kensington Remembers</small>  \
-        </a> \
       </div> \
     ");
 
@@ -493,7 +430,7 @@ $(window).on('load', function() {
       var gaScript = document.createElement('script');
       gaScript.setAttribute('src','https://www.googletagmanager.com/gtag/js?id=' + ga);
       document.head.appendChild(gaScript);
-
+  
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
@@ -509,33 +446,25 @@ $(window).on('load', function() {
    */
   function changeAttribution() {
     var attributionHTML = $('.leaflet-control-attribution')[0].innerHTML;
-    var credit = 'Map <a href="'
+    var credit = 'View <a href="'
       // Show Google Sheet URL if the variable exists and is not empty, otherwise link to Chapters.csv
       + (typeof googleDocURL !== 'undefined' && googleDocURL ? googleDocURL : './csv/Chapters.csv')
-      + '" target="_blank">data</a> and photos by';
-
+      + '" target="_blank">data</a>';
+    
     var name = getSetting('_authorName');
-    var web = getSetting('_webDeveloper')
     var url = getSetting('_authorURL');
-    var weburl = getSetting('_webDeveloperURL');
 
     if (name && url) {
       if (url.indexOf('@') > 0) { url = 'mailto:' + url; }
-      credit += ' <a href="' + url + '">' + name + '</a> | ';
+      credit += ' by <a href="' + url + '">' + name + '</a> | ';
     } else if (name) {
       credit += ' by ' + name + ' | ';
     } else {
       credit += ' | ';
     }
 
-    if (getSetting('projectWebsite')) credit += ' Project website: ' + getSetting('projectWebsite') + ' | ';
-    if (getSetting('_githubRepo')) credit += ' GitHub Repo: ' + getSetting('_githubRepo') + ' | ';
-    //if (getSetting('_webDeveloper')) credit += 'Digital Project Support by: ' + getSetting('_webDeveloper') + ' | ';
-    if ( web && weburl) {
-      if (weburl.indexOf('@') > 0) { url = 'mailto:' + weburl; }
-      credit += ' Digital Project Support by: <a href="' + weburl + '">' + web + ' | ' + '</a>';
-    };
-    if (getSetting('_codeCredit')) credit += 'Original Code by ' + getSetting('_codeCredit');
+    credit += 'View <a href="' + getSetting('_githubRepo') + '">code</a>';
+    if (getSetting('_codeCredit')) credit += ' by ' + getSetting('_codeCredit');
     credit += ' with ';
     $('.leaflet-control-attribution')[0].innerHTML = credit + attributionHTML;
   }
